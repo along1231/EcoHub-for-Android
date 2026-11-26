@@ -22,6 +22,7 @@ class BasicConfig {
   final String describe;
   final bool state;
   final String hint;
+  final bool privateAccess;
   final bool tipEnabled;
   final String tipTitle;
   final String tipMessage;
@@ -42,6 +43,7 @@ class BasicConfig {
     this.describe = '',
     this.state = true,
     this.hint = '',
+    this.privateAccess = false,
     this.tipEnabled = false,
     this.tipTitle = '赞赏支持',
     this.tipMessage = '',

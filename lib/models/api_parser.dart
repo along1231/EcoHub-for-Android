@@ -386,6 +386,7 @@ class ApiParser {
       describe: str(map, 'describe'),
       state: map.containsKey('state') ? boolVal(map, 'state', true) : true,
       hint: str(map, 'hint', '网站升级中, 暂时无法访问'),
+      privateAccess: boolVal(map, 'privateAccess'),
       tipEnabled: boolVal(tip, 'enabled'),
       tipTitle: str(tip, 'title', '赞赏支持'),
       tipMessage: str(tip, 'message'),

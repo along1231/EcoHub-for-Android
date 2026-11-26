@@ -30,6 +30,16 @@ class ApiResponse {
   }
 }
 
+class HttpStatusException implements Exception {
+  final int statusCode;
+  final String message;
+
+  const HttpStatusException(this.statusCode, this.message);
+
+  @override
+  String toString() => message;
+}
+
 class ConnectionResult {
   final bool ok;
   final String? message;
@@ -129,13 +139,17 @@ class HttpClient {
 
       if (res.statusCode != 200) {
         String errMsg = 'HTTP ${res.statusCode}';
+        dynamic parsedBody;
         try {
-          final body = jsonDecode(utf8.decode(res.bodyBytes));
-          if (body is Map && body['msg'] != null && body['msg'].toString().isNotEmpty) {
-            errMsg = body['msg'].toString();
+          parsedBody = jsonDecode(utf8.decode(res.bodyBytes));
+          if (parsedBody is Map &&
+              parsedBody['msg'] != null &&
+              parsedBody['msg'].toString().isNotEmpty) {
+            errMsg = parsedBody['msg'].toString();
           }
         } catch (_) {}
-        throw Exception(errMsg);
+        _checkPrivateIntercept(res.statusCode, parsedBody, errMsg);
+        throw HttpStatusException(res.statusCode, errMsg);
       }
       final body = jsonDecode(utf8.decode(res.bodyBytes));
       if (body is Map<String, dynamic>) {
@@ -350,10 +364,67 @@ class HttpClient {
     }
   }
 
+  Future<bool> checkPrivateAccessValid({int timeoutMs = 5000}) async {
+    final manager = ServerConfigManager.instance;
+    final cachedUrl = manager.getCachedServerUrl();
+    if (cachedUrl.isEmpty) return true;
+    final origin = ServerConfigManager.stripApiSuffix(
+      manager.normalizeRaw(cachedUrl),
+    );
+    if (origin.isEmpty || origin == 'https://' || origin == 'http://') {
+      return true;
+    }
+    final key = manager.provideKey;
+    if (key.isEmpty) {
+      return false;
+    }
+    try {
+      await _send(
+        '$origin/api/provide/app',
+        timeoutMs,
+        customKey: key,
+        interceptOnAuthFail: false,
+      );
+      return true;
+    } catch (e) {
+      return !isPrivateAuthError(e);
+    }
+  }
+
+  static bool isPrivateAuthError(Object e) {
+    if (e is HttpStatusException &&
+        (e.statusCode == 401 || e.statusCode == 403)) {
+      return true;
+    }
+    final msg = e.toString();
+    return msg.contains('私有化') ||
+        msg.contains('订阅密钥') ||
+        msg.contains('HTTP 401') ||
+        msg.contains('HTTP 403');
+  }
+
+  static void _checkPrivateIntercept(
+    int statusCode,
+    dynamic body,
+    String errMsg,
+  ) {
+    if (statusCode != 401 && statusCode != 403) return;
+    final isPrivatePayload =
+        body is Map &&
+        body['data'] is Map &&
+        body['data']['private_access'] == true;
+    if (isPrivatePayload ||
+        errMsg.contains('私有化') ||
+        errMsg.contains('订阅密钥')) {
+      SourceGuard.intercept();
+    }
+  }
+
   Future<ApiResponse> _send(
     String url,
     int timeoutMs, {
     String? customKey,
+    bool interceptOnAuthFail = true,
   }) async {
     final userAgent = await _resolveUserAgent();
     final manager = ServerConfigManager.instance;
@@ -381,15 +452,19 @@ class HttpClient {
 
       if (res.statusCode != 200) {
         String errMsg = 'HTTP ${res.statusCode}';
+        dynamic parsedBody;
         try {
-          final body = jsonDecode(utf8.decode(res.bodyBytes));
-          if (body is Map &&
-              body['msg'] != null &&
-              body['msg'].toString().isNotEmpty) {
-            errMsg = body['msg'].toString();
+          parsedBody = jsonDecode(utf8.decode(res.bodyBytes));
+          if (parsedBody is Map &&
+              parsedBody['msg'] != null &&
+              parsedBody['msg'].toString().isNotEmpty) {
+            errMsg = parsedBody['msg'].toString();
           }
         } catch (_) {}
-        throw Exception(errMsg);
+        if (interceptOnAuthFail) {
+          _checkPrivateIntercept(res.statusCode, parsedBody, errMsg);
+        }
+        throw HttpStatusException(res.statusCode, errMsg);
       }
       final body = jsonDecode(utf8.decode(res.bodyBytes));
       if (body is Map<String, dynamic>) {

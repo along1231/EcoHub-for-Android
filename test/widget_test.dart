@@ -78,6 +78,7 @@ void main() {
         'siteUrl': 'https://test.com',
         'state': true,
         'hint': 'hello',
+        'privateAccess': true,
         'tip': {
           'enabled': true,
           'title': '赞赏',
@@ -96,6 +97,7 @@ void main() {
 
       final config = ApiParser.parseBasicConfig(json);
       expect(config.siteName, 'TestHub');
+      expect(config.privateAccess, true);
       expect(config.tipEnabled, true);
       expect(config.tipChannels.length, 1);
       expect(config.tipChannels.first.label, '微信');
@@ -242,6 +244,8 @@ void main() {
       expect(ServerConfigManager.stripApiSuffix('https://eco.fe-spark.cn/api/'), 'https://eco.fe-spark.cn');
       expect(ServerConfigManager.stripApiSuffix('https://eco.fe-spark.cn/api/provide/app'), 'https://eco.fe-spark.cn');
       expect(ServerConfigManager.stripApiSuffix('https://eco.fe-spark.cn/api/provide/app/'), 'https://eco.fe-spark.cn');
+      expect(ServerConfigManager.stripApiSuffix('https://eco.fe-spark.cn/api/provide/tvbox?key=abc'), 'https://eco.fe-spark.cn');
+      expect(ServerConfigManager.stripApiSuffix('https://eco.fe-spark.cn/api/provide/vod?key=abc'), 'https://eco.fe-spark.cn');
       expect(ServerConfigManager.extractProvideKey('https://eco.fe-spark.cn/api/provide/app?key=mykey'), 'mykey');
       expect(ServerConfigManager.stripProvideKey('https://eco.fe-spark.cn/api/provide/app?key=mykey'), 'https://eco.fe-spark.cn/api/provide/app');
       expect(ServerConfigManager.buildServerUrl('https://eco.fe-spark.cn/api/provide/app', 'mykey'), 'https://eco.fe-spark.cn/api/provide/app?key=mykey');
@@ -269,6 +273,13 @@ void main() {
       expect(res.ok, false);
       expect(res.isPrivate, true);
       expect(res.message, contains('私有化'));
+    });
+
+    test('isPrivateAuthError matches HTTP 401/403 regardless of localized msg', () {
+      expect(HttpClient.isPrivateAuthError(const HttpStatusException(401, 'Unauthorized')), true);
+      expect(HttpClient.isPrivateAuthError(const HttpStatusException(403, 'Forbidden')), true);
+      expect(HttpClient.isPrivateAuthError(const HttpStatusException(502, 'Bad Gateway')), false);
+      expect(HttpClient.isPrivateAuthError(Exception('私有化订阅密钥错误')), true);
     });
   });
 
@@ -602,6 +613,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('EcoHub'), findsOneWidget);
+      expect(find.byIcon(Icons.qr_code_scanner_rounded), findsOneWidget);
       expect(find.byType(ElevatedButton), findsOneWidget);
 
       final titleCenter = tester.getCenter(find.text('EcoHub'));
@@ -626,6 +638,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('EcoHub'), findsOneWidget);
+      expect(find.byIcon(Icons.qr_code_scanner_rounded), findsOneWidget);
       expect(find.byType(ElevatedButton), findsOneWidget);
 
       final buttonCenter = tester.getCenter(find.byType(ElevatedButton));

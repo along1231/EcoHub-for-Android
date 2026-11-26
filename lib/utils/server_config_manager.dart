@@ -222,16 +222,23 @@ class ServerConfigManager {
     while (base.endsWith('/')) {
       base = base.substring(0, base.length - 1);
     }
-    // 兼容剥离 /api/provide/app 或 /provide/app
-    if (base.toLowerCase().endsWith('/api/provide/app')) {
-      base = base.substring(0, base.length - 16);
-      while (base.endsWith('/')) {
-        base = base.substring(0, base.length - 1);
-      }
-    } else if (base.toLowerCase().endsWith('/provide/app')) {
-      base = base.substring(0, base.length - 12);
-      while (base.endsWith('/')) {
-        base = base.substring(0, base.length - 1);
+    // 兼容剥离 /api/provide/(app|tvbox|vod) 或 /provide/(app|tvbox|vod)
+    final lower = base.toLowerCase();
+    const suffixes = [
+      '/api/provide/app',
+      '/provide/app',
+      '/api/provide/tvbox',
+      '/provide/tvbox',
+      '/api/provide/vod',
+      '/provide/vod',
+    ];
+    for (final suffix in suffixes) {
+      if (lower.endsWith(suffix)) {
+        base = base.substring(0, base.length - suffix.length);
+        while (base.endsWith('/')) {
+          base = base.substring(0, base.length - 1);
+        }
+        break;
       }
     }
     while (base.toLowerCase().endsWith('/api')) {
