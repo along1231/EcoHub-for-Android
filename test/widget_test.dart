@@ -1450,6 +1450,7 @@ void main() {
             body: FilmRow(
               title: '推荐电影',
               films: testFilms,
+              pid: 1,
               leftInset: 48.0,
               rightInset: 36.0,
             ),
