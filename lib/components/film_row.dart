@@ -49,6 +49,7 @@ class FilmRow extends StatelessWidget {
     );
     // 海报 2:3 + 标题上距 6 / 高 18 + 副标上距 2 / 高 15
     final rowHeight = cardW * 1.5 + 41;
+    final hasMore = onMore != null || pid > 0;
 
     return Container(
       width: double.infinity,
@@ -74,7 +75,7 @@ class FilmRow extends StatelessWidget {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => _openMore(context),
+                    onTap: hasMore ? () => _openMore(context) : null,
                     child: Row(
                       children: [
                         Container(
@@ -102,33 +103,34 @@ class FilmRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => _openMore(context),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: AppTheme.spaceSm),
-                    child: SizedBox(
-                      height: 28,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            moreText,
-                            style: const TextStyle(
-                              fontSize: 12,
+                if (hasMore)
+                  GestureDetector(
+                    onTap: () => _openMore(context),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: AppTheme.spaceSm),
+                      child: SizedBox(
+                        height: 28,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              moreText,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              size: 14,
                               color: AppTheme.textMuted,
                             ),
-                          ),
-                          const SizedBox(width: 3),
-                          const Icon(
-                            Icons.chevron_right_rounded,
-                            size: 14,
-                            color: AppTheme.textMuted,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

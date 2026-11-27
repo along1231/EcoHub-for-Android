@@ -140,17 +140,51 @@ class ApiParser {
     final bannersRaw = listVal(map, 'banners');
     final banners = bannersRaw.map((e) => parseBanner(e)).toList();
 
+    final recommendsRaw = listVal(map, 'recommends');
     final contentRaw = listVal(map, 'content');
-    final content = <HomeSection>[];
-    for (final s in contentRaw) {
+    final sections = <HomeSection>[];
+    var hasCategoryInRecommends = false;
+
+    for (final s in recommendsRaw) {
       final smap = asMap(s);
-      content.add(HomeSection(
-        nav: parseCategory(mapVal(smap, 'nav')),
-        movies: parseMovies(listVal(smap, 'movies')),
+      final nav = parseCategory(mapVal(smap, 'nav'));
+      final rawKind = str(smap, 'kind');
+      final kind = rawKind.isNotEmpty
+          ? rawKind
+          : (nav.id > 0 ? 'category' : 'recommend');
+      if (kind == 'category') {
+        hasCategoryInRecommends = true;
+      }
+      final title = str(smap, 'title');
+      final effectiveNav = kind == 'category'
+          ? nav
+          : CategoryItem(id: 0, pid: 0, name: title, show: true);
+      sections.add(HomeSection(
+        id: str(smap, 'id'),
+        kind: kind,
+        title: title,
+        nav: effectiveNav,
+        movies: parseMovies(listVal(smap, 'items')),
         hot: parseMovies(listVal(smap, 'hot')),
       ));
     }
-    return HomeData(banners: banners, content: content);
+
+    // 兼容旧版服务端（v3.1.6 仅返回 content；v3.1.7 recommends 不含分类楼层）
+    if (!hasCategoryInRecommends) {
+      for (final s in contentRaw) {
+        final smap = asMap(s);
+        final nav = parseCategory(mapVal(smap, 'nav'));
+        sections.add(HomeSection(
+          id: 'cat_${nav.id}',
+          kind: 'category',
+          title: nav.name,
+          nav: nav,
+          movies: parseMovies(listVal(smap, 'movies')),
+          hot: parseMovies(listVal(smap, 'hot')),
+        ));
+      }
+    }
+    return HomeData(banners: banners, content: sections);
   }
 
   static PageInfo parsePage(dynamic raw) {
@@ -386,6 +420,7 @@ class ApiParser {
       describe: str(map, 'describe'),
       state: map.containsKey('state') ? boolVal(map, 'state', true) : true,
       hint: str(map, 'hint', '网站升级中, 暂时无法访问'),
+      privateAccess: boolVal(map, 'privateAccess'),
       tipEnabled: boolVal(tip, 'enabled'),
       tipTitle: str(tip, 'title', '赞赏支持'),
       tipMessage: str(tip, 'message'),

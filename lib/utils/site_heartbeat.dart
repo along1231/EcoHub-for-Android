@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../api/film_api.dart';
+import '../api/http_client.dart';
 import '../models/film_models.dart';
 import '../services/route_observer.dart';
 import 'server_config_manager.dart';
@@ -108,10 +109,25 @@ class SiteHeartbeat {
 
     final gen = _generation;
     _probing = true;
+    var authBlocked = false;
     try {
       final config = await FilmApi.getSiteConfig(force: true, timeoutMs: _probeTimeoutMs);
       if (gen != _generation) return;
       _consecutiveFailures = 0;
+      if (config.privateAccess) {
+        final authOk = await HttpClient.instance.checkPrivateAccessValid(timeoutMs: _probeTimeoutMs);
+        if (gen != _generation) return;
+        if (!authOk) {
+          authBlocked = true;
+          SourceGuard.intercept(onContinue: () {
+            _consecutiveFailures = 0;
+            if (_running) {
+              _scheduleNext(_continueBackoffMs);
+            }
+          });
+          return;
+        }
+      }
       checkSiteClosedState(config);
     } catch (_) {
       if (gen != _generation) return;
@@ -132,7 +148,7 @@ class SiteHeartbeat {
       }
     } finally {
       _probing = false;
-      if (gen == _generation && _running && _consecutiveFailures < _maxFailures) {
+      if (gen == _generation && _running && !authBlocked && _consecutiveFailures < _maxFailures) {
         _scheduleNext(_heartbeatIntervalMs);
       }
     }

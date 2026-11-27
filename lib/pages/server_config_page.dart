@@ -9,6 +9,7 @@ import '../api/film_api.dart';
 import '../components/app_icon.dart';
 import '../components/server_history_dialog.dart';
 import 'main_scaffold_page.dart';
+import 'qr_scan_page.dart';
 
 /// 软件源配置页，对齐 OHOS `ServerConfigPage`
 class ServerConfigPage extends StatefulWidget {
@@ -54,6 +55,36 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
         _serverHistory = list;
       });
     }
+  }
+
+  bool _isValidScannedUrl(String raw) {
+    if (raw.isEmpty || RegExp(r'\s').hasMatch(raw)) {
+      return false;
+    }
+    final lower = raw.toLowerCase();
+    if (lower.startsWith('http://') || lower.startsWith('https://')) {
+      return raw.length > 8;
+    }
+    return raw.contains('.');
+  }
+
+  Future<void> _scanSourceCode() async {
+    if (_isLoading) return;
+    FocusScope.of(context).unfocus();
+    final scanned = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const QrScanPage()),
+    );
+    if (!mounted || scanned == null) return;
+    final clean = scanned.trim();
+    if (clean.isEmpty) return;
+    if (!_isValidScannedUrl(clean)) {
+      _toast('未识别到有效的软件源地址');
+      return;
+    }
+    setState(() {
+      _controller.text = clean;
+    });
+    await _saveAndConnect();
   }
 
   Future<void> _saveAndConnect() async {
@@ -254,6 +285,8 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
     final size = MediaQuery.sizeOf(context);
     final landscape = size.width > size.height;
     final canBack = !_reconnect && Navigator.canPop(context);
+    final topBarHeight = landscape ? 36.0 : 48.0;
+    final verticalSafe = topBarHeight + 4;
 
     return PopScope(
       canPop: !_reconnect,
@@ -265,63 +298,73 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
         backgroundColor: AppTheme.bg,
         resizeToAvoidBottomInset: true,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              if (canBack)
-                SizedBox(
-                  height: landscape ? 36 : 48,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppTheme.textPrimary),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                        child: Center(
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              landscape ? 16 : 24,
-                              landscape ? 4 : 20,
-                              landscape ? 16 : 24,
-                              24,
-                            ),
-                            child: landscape
-                                ? Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      SizedBox(width: 160, child: _brand(landscape: true)),
-                                      const SizedBox(width: 28),
-                                      Expanded(
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(maxWidth: 440),
-                                          child: _form(landscape: true),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _brand(landscape: false),
-                                      const SizedBox(height: 28),
-                                      ConstrainedBox(
-                                        constraints: const BoxConstraints(maxWidth: 480),
-                                        child: _form(landscape: false),
-                                      ),
-                                    ],
-                                  ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            landscape ? 16 : 24,
+                            verticalSafe,
+                            landscape ? 16 : 24,
+                            verticalSafe,
                           ),
+                          child: landscape
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    SizedBox(width: 160, child: _brand(landscape: true)),
+                                    const SizedBox(width: 28),
+                                    Expanded(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 440),
+                                        child: _form(landscape: true),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _brand(landscape: false),
+                                    const SizedBox(height: 28),
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(maxWidth: 480),
+                                      child: _form(landscape: false),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  );
+                },
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: topBarHeight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      if (canBack)
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppTheme.textPrimary),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      const Spacer(),
+                      IconButton(
+                        icon: Icon(Icons.qr_code_scanner_rounded, size: landscape ? 22 : 24, color: AppTheme.textPrimary),
+                        onPressed: _scanSourceCode,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

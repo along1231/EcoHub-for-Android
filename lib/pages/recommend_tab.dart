@@ -125,10 +125,14 @@ class _RecommendTabState extends State<RecommendTab> {
 
   List<HomeSection> _visibleSections() {
     return _sections.where((s) {
-      if (!s.nav.show) return false;
+      if (s.isCategory && !s.nav.show) return false;
       final films = s.movies.isNotEmpty ? s.movies : s.hot;
       return films.isNotEmpty;
     }).toList();
+  }
+
+  List<HomeSection> _categoryCapsules() {
+    return _sections.where((s) => s.isCategory && s.nav.show).toList();
   }
 
   String _categoryGlyph(String name) {
@@ -385,6 +389,7 @@ class _RecommendTabState extends State<RecommendTab> {
     final rightInset = media.padding.right;
     final wide = Breakpoint.isWideWidth(media.size.width);
     final sections = _visibleSections();
+    final capsules = _categoryCapsules();
 
     Widget body;
     if (_loading) {
@@ -432,7 +437,7 @@ class _RecommendTabState extends State<RecommendTab> {
             children: [
               if (topSpace > 0) SizedBox(height: topSpace),
               HomeBanner(key: ValueKey(_reloadToken), banners: _banners),
-              if (sections.isNotEmpty)
+              if (capsules.isNotEmpty)
                 Padding(
                   padding: EdgeInsets.only(bottom: wide ? 14 : AppTheme.spaceLg),
                   child: SingleChildScrollView(
@@ -442,19 +447,20 @@ class _RecommendTabState extends State<RecommendTab> {
                       right: AppTheme.spaceLg + rightInset,
                     ),
                     child: Row(
-                      children: sections.map((s) => _categoryEntry(s, wide)).toList(),
+                      children: capsules.map((s) => _categoryEntry(s, wide)).toList(),
                     ),
                   ),
                 ),
               ...sections.map((section) {
                 final movies = section.movies.isNotEmpty ? section.movies : section.hot;
+                final isCat = section.isCategory;
                 return FilmRow(
-                  title: section.nav.name,
+                  title: section.displayTitle,
                   films: movies,
-                  pid: section.nav.id,
+                  pid: isCat ? section.nav.id : 0,
                   leftInset: leftInset,
                   rightInset: rightInset,
-                  onMore: () => _openFilter(section.nav.id),
+                  onMore: isCat ? () => _openFilter(section.nav.id) : null,
                 );
               }),
               const SizedBox(height: AppTheme.spaceSm),

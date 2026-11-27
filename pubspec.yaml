@@ -44,6 +44,7 @@ dependencies:
   flutter_markdown: ^0.7.5
   flutter_svg: ^2.3.0
   markdown: ^7.3.1
+  mobile_scanner: ^7.5.0
 
 dev_dependencies:
   flutter_test:
