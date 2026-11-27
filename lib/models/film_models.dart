@@ -167,17 +167,26 @@ class BannerItem {
   });
 }
 
-/// 首页分类区块数据
+/// 首页展示区块数据（统一承载分类楼层与推荐分组）
 class HomeSection {
+  final String id;
+  final String kind; // category | recommend
+  final String title;
   final CategoryItem nav;
   final List<MovieBasicInfo> movies;
   final List<MovieBasicInfo> hot;
 
   HomeSection({
+    this.id = '',
+    this.kind = 'category',
+    this.title = '',
     required this.nav,
     required this.movies,
     required this.hot,
   });
+
+  bool get isCategory => kind == 'category' && nav.id > 0;
+  String get displayTitle => title.isNotEmpty ? title : nav.name;
 }
 
 /// 首页全量数据
